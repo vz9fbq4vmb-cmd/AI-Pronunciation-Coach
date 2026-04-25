@@ -1,0 +1,5 @@
+streamlit
+SpeechRecognition
+librosa
+matplotlib
+numpy
