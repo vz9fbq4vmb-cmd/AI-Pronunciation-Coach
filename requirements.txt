@@ -3,3 +3,4 @@ SpeechRecognition
 librosa
 matplotlib
 numpy
+gTTS
