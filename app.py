@@ -1,4 +1,4 @@
-import streamlit as st
+streamlit as st
 import speech_recognition as sr
 import numpy as np
 import librosa
