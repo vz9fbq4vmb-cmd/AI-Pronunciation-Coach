@@ -1,7 +1,6 @@
 streamlit
-SpeechRecognition
 librosa
 matplotlib
 numpy
+SpeechRecognition
 gTTS
-pydub
