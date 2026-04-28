@@ -7,43 +7,84 @@ import speech_recognition as sr
 import io
 from gtts import gTTS
 import difflib
+import pandas as pd
+from datetime import datetime
 
-st.set_page_config(page_title="AI Pronunciation Coach 3.0", layout="wide")
+# Беттің реттеулері
+st.set_page_config(page_title="AI Pronunciation Coach Pro", layout="wide", initial_sidebar_state="expanded")
 
-# Дизайнды жақсарту (CSS)
+# --- СТИЛЬ (CSS) ---
 st.markdown("""
     <style>
-    .main { background-color: #f0f2f6; }
-    .stButton>button { width: 100%; border-radius: 20px; height: 3em; background-color: #007bff; color: white; }
-    .reportview-container .main .footer{ text-align: center; }
+    .main { background-color: #f8f9fa; }
+    .stButton>button { border-radius: 10px; height: 3em; transition: 0.3s; }
+    .stButton>button:hover { background-color: #007bff; color: white; border: none; }
+    .score-box { padding: 20px; border-radius: 15px; text-align: center; color: white; font-weight: bold; margin-bottom: 20px; }
+    .sidebar-content { padding: 10px; border-radius: 10px; background-color: #ffffff; margin-bottom: 10px; border: 1px solid #ddd; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🎙️ AI-Powered Pronunciation Coach (US Accent)")
+# --- SESSION STATE (Мәліметтерді сақтау) ---
+if 'history' not in st.session_state:
+    st.session_state.history = []
 
-col1, col2 = st.columns([1, 1])
+# --- ДЕРЕКТЕР: ДЕҢГЕЙЛЕР ЖӘНЕ ТАПСЫРМАЛАР ---
+levels = {
+    "Easy (Сөздер)": ["Apple", "Family", "Student", "School", "Teacher"],
+    "Medium (Тіркестер)": ["Good morning", "How are you?", "Artificial Intelligence", "Science Project"],
+    "Hard (Скороговорки)": ["She sells seashells", "Red lory, yellow lory", "Peter Piper picked", "I scream for ice cream"]
+}
 
-with col1:
-    st.info("📸 Visual Feedback (Articulation)")
-    st.camera_input("Watch your lip movement")
+# Күнделікті тапсырма (Күнге байланысты ауысады)
+daily_challenges = ["Everything happens for a reason", "Practice makes perfect", "Knowledge is power"]
+day_of_year = datetime.now().timetuple().tm_yday
+daily_task = daily_challenges[day_of_year % len(daily_challenges)]
 
-with col2:
-    target_text = st.text_input("Type a word or sentence to practice:", "Everything happens for a reason")
+# --- SIDEBAR (Статистика және Деңгейлер) ---
+with st.sidebar:
+    st.title("📊 Dashboard")
+    st.markdown(f"**🗓 Күнделікті тапсырма:** \n\n `{daily_task}`")
     
-    # 🇺🇸 Native American Accent Generator
-    if st.button("🔊 Listen to Native Speaker (US)"):
-        try:
-            # tld='us' нағыз американдық акцентті береді
-            tts = gTTS(text=target_text, lang='en', tld='us', slow=False)
-            audio_fp = io.BytesIO()
-            tts.write_to_fp(audio_fp)
-            st.audio(audio_fp, format='audio/mp3')
-        except Exception as e:
-            st.error("Connection error. Please try again.")
+    selected_level = st.selectbox("🎯 Деңгейді таңдаңыз:", list(levels.keys()))
+    suggested_word = st.selectbox("📖 Сөз таңдаңыз:", levels[selected_level])
+    
+    st.divider()
+    st.subheader("📜 Жетістік тарихы")
+    if st.session_state.history:
+        df = pd.DataFrame(st.session_state.history)
+        st.dataframe(df, hide_index=True)
+        if st.button("Тарихты тазалау"):
+            st.session_state.history = []
+            st.rerun()
+    else:
+        st.write("Әлі нәтиже жоқ.")
 
-    # 🎤 Recording Section
-    st.subheader("Your Turn")
-    audio_value = st.audio_input("Click to record your voice")
+# --- НЕГІЗГІ БЕТ ---
+st.title("🎙️ AI Pronunciation Coach Pro")
+st.write("Ағылшын тіліндегі айтылымды жақсартуға арналған жасанды интеллект көмекшісі.")
+
+col_main1, col_main2 = st.columns([1, 1])
+
+with col_main1:
+    st.subheader("📹 Артикуляция")
+    st.camera_input("Watch your lip movement", key="coach_cam")
+    
+    st.info("💡 **ЖИ Кеңесі:** Дыбысты шығарғанда ерніңіз бен тіліңіздің қозғалысына назар аударыңыз. Айнадағыдай бақылау — ең жақсы әдіс.")
+
+with col_main2:
+    target_text = st.text_input("Жаттығатын сөзіңіз:", suggested_word)
+    
+    # 🇺🇸 Американдық акцент
+    if st.button("🔊 Үлгіні тыңдау (American Accent)"):
+        tts = gTTS(text=target_text, lang='en', tld='us')
+        fp = io.BytesIO()
+        tts.write_to_fp(fp)
+        st.audio(fp, format='audio/mp3')
+
+    st.divider()
+    
+    # 🎤 Жазу
+    audio_value = st.audio_input("Дауысыңызды жазыңыз")
 
     if audio_value:
         recognizer = sr.Recognizer()
@@ -55,42 +96,44 @@ with col2:
                 audio_data = recognizer.record(source)
                 student_text = recognizer.recognize_google(audio_data, language="en-US")
                 
-                st.write(f"You said: **{student_text}**")
+                st.write(f"Сіз айттыңыз: **{student_text}**")
 
-                # 📊 Accuracy Score Calculation
-                # Сөздердің ұқсастығын пайызбен есептейміз
-                similarity = difflib.SequenceMatcher(None, target_text.lower(), student_text.lower()).ratio()
+                # Ұпай есептеу
+                similarity = difflib.SequenceMatcher(None, target_text.lower().strip(), student_text.lower().strip()).ratio()
                 score = int(similarity * 100)
 
-                # Түсті индикаторлар
+                # Түсті блоктар және Кеңестер
                 if score >= 90:
-                    color = "#28a745" # Жасыл
-                    status = "Excellent! Native level."
+                    bg_color, status, feedback = "#28a745", "Керемет!", "Сіздің айтылымыңыз нағыз нетив-спикер сияқты!"
                     st.balloons()
                 elif score >= 60:
-                    color = "#ffc107" # Сары
-                    status = "Good, but try to be clearer."
+                    bg_color, status, feedback = "#ffc107", "Жақсы!", "Кейбір әріптерді анығырақ айтуға тырысыңыз."
                 else:
-                    color = "#dc3545" # Қызыл
-                    status = "Keep practicing! Listen to the sample again."
+                    bg_color, status, feedback = "#dc3545", "Талпын!", "Үлгіні қайта тыңдап, дауысты дыбыстарды созып айтыңыз."
 
                 st.markdown(f"""
-                    <div style='padding:20px; border-radius:15px; background-color:{color}; color:white; text-align:center;'>
-                        <h2 style='margin:0;'>Score: {score}%</h2>
-                        <p style='margin:0; font-size:1.2em;'>{status}</p>
+                    <div class="score-box" style="background-color: {bg_color};">
+                        <h2 style="margin:0;">Ұпай: {score}%</h2>
+                        <p style="margin:0;">{status}</p>
                     </div>
                 """, unsafe_allow_html=True)
+                
+                st.write(f"💬 **AI Кеңесі:** {feedback}")
 
-            # 📊 Spectrogram Analysis
-            st.write("### 📊 Voice Spectrogram Analysis")
-            y, sr_lib = librosa.load(io.BytesIO(audio_bytes), sr=None)
-            fig, ax = plt.subplots(figsize=(10, 4))
-            D = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)
-            librosa.display.specshow(D, sr=sr_lib, x_axis='time', y_axis='hz', ax=ax)
-            st.pyplot(fig)
+                # Тарихқа сақтау
+                now = datetime.now().strftime("%H:%M")
+                st.session_state.history.append({"Уақыт": now, "Сөз": target_text, "Ұпай": f"{score}%"})
+
+            # 📊 Спектрограмма
+            with st.expander("📊 Дыбыс толқынын көру (Spectrogram)"):
+                y, sr_lib = librosa.load(io.BytesIO(audio_bytes), sr=None)
+                fig, ax = plt.subplots(figsize=(10, 3))
+                D = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)
+                librosa.display.specshow(D, sr=sr_lib, x_axis='time', y_axis='hz', ax=ax)
+                st.pyplot(fig)
 
         except Exception as e:
-            st.warning("Could not recognize audio. Speak louder and clear.")
+            st.error("Дыбыс танылмады. Сәл қаттырақ және анық сөйлеңіз.")
 
 st.divider()
-st.caption("AI-Powered Pronunciation Coach | Developed for Science Project 2026")
+st.markdown("<p style='text-align: center; color: grey;'>AI Pronunciation Coach Pro | 2026 Science Project</p>", unsafe_allow_html=True)
