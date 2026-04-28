@@ -4,3 +4,4 @@ matplotlib
 numpy
 SpeechRecognition
 gTTS
+pandas
