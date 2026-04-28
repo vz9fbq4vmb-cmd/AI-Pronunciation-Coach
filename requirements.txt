@@ -5,3 +5,4 @@ matplotlib
 numpy
 gTTS
 pydub
+PyAudio
